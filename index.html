@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Гонка на выживание</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; touch-action: none; background: #222; font-family: Arial; }
+        #gameCanvas { display: block; background: #333; }
+        #score { position: absolute; top: 10px; left: 10px; color: white; font-size: 24px; }
+        #menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; }
+        .btn { margin: 10px; padding: 12px 24px; font-size: 18px; background: #4CAF50; border: none; border-radius: 5px; color: white; cursor: pointer; }
+        .btn:hover { background: #45a049; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="score">Счёт: 0</div>
+    <div id="menu">
+        <h1>Гонка на выживание</h1>
+        <h3>Выберите сложность:</h3>
+        <button class="btn" onclick="startGame('easy')">Лёгкая</button>
+        <button class="btn" onclick="startGame('medium')">Средняя</button>
+        <button class="btn" onclick="startGame('hard')">Сложная</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const menu = document.getElementById('menu');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const player = {
+            x: 0,
+            y: canvas.height - 100,
+            width: 50,
+            height: 80,
+            speed: 5,
+            color: '#3498db',
+            lane: 1
+        };
+
+        const lanes = [
+            canvas.width * 0.25 - 25,
+            canvas.width * 0.5 - 25,
+            canvas.width * 0.75 - 25
+        ];
+
+        let obstacles = [];
+        let score = 0;
+        let gameRunning = false;
+        let difficulty = 'medium';
+
+        function startGame(level) {
+            difficulty = level;
+            gameRunning = true;
+            menu.style.display = 'none';
+            score = 0;
+            obstacles = [];
+            player.lane = 1;
+            player.x = lanes[player.lane];
+            scoreElement.textContent = `Счёт: ${score}`;
+        }
+
+        function endGame() {
+            gameRunning = false;
+            menu.style.display = 'flex';
+            alert(`Игра окончена! Счёт: ${score}`);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' && player.lane > 0) player.lane--;
+            if (e.key === 'ArrowRight' && player.lane < 2) player.lane++;
+            player.x = lanes[player.lane];
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            const touchX = e.touches[0].clientX;
+            if (touchX < canvas.width / 2 && player.lane > 0) player.lane--;
+            else if (touchX >= canvas.width / 2 && player.lane < 2) player.lane++;
+            player.x = lanes[player.lane];
+        });
+
+        function spawnObstacle() {
+            const lane = Math.floor(Math.random() * 3);
+            const width = 50;
+            const speedMap = { easy: 2, medium: 4, hard: 6 };
+            obstacles.push({
+                x: lanes[lane],
+                y: -100,
+                width: width,
+                height: 60,
+                speed: speedMap[difficulty],
+                color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+                lane: lane
+            });
+        }
+
+        function update() {
+            if (!gameRunning) return;
+            player.x = lanes[player.lane];
+
+            obstacles.forEach((obstacle, index) => {
+                obstacle.y += obstacle.speed;
+
+                if (
+                    player.lane === obstacle.lane &&
+                    player.y < obstacle.y + obstacle.height &&
+                    player.y + player.height > obstacle.y
+                ) {
+                    endGame();
+                }
+
+                if (obstacle.y > canvas.height) {
+                    obstacles.splice(index, 1);
+                    score += 1;
+                    scoreElement.textContent = `Счёт: ${score}`;
+                }
+            });
+
+            if (Math.random() < 0.02) spawnObstacle();
+        }
+
+        function draw() {
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+
+            obstacles.forEach(obstacle => {
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            });
+
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < lanes.length; i++) {
+                ctx.beginPath();
+                ctx.moveTo(lanes[i] + 25, 0);
+                ctx.lineTo(lanes[i] + 25, canvas.height);
+                ctx.stroke();
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
